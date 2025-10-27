@@ -1,11 +1,18 @@
 [package]
-name = "tauri-plugin-mcp"
+name = "tauri-plugin-mcp-gui"
 version = "0.1.0"
-authors = [ "Pegleg" ]
-description = "A Tauri plugin that enables AI agents to interact with GUIs through screenshots, DOM access, and input simulation utilizing MCP"
-edition = "2024"
-exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]
-links = "tauri-plugin-mcp"
+authors = [ "Jarad DeLorenzo <delorenj@gmail.com>" ]
+description = "A Tauri plugin that enables AI agents to interact with desktop GUIs through screenshots, DOM access, and input simulation utilizing MCP"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/delorenj/tauri-plugin-mcp"
+homepage = "https://delorenj.github.io"
+documentation = "https://docs.rs/tauri-plugin-mcp-gui"
+readme = "README.md"
+keywords = ["tauri", "mcp", "gui", "automation", "ai"]
+categories = ["gui", "api-bindings", "development-tools"]
+exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules", "/mcp-server-ts", "/.claude*", "/.hive-mind", "/.swarm", "/target"]
+links = "tauri-plugin-mcp-gui"
 
 [dependencies]
 anyhow = "1.0"
@@ -32,7 +39,6 @@ win-screenshot = "4.0.5"
 
 [build-dependencies]
 tauri-plugin = { version = "2.2.0", features = ["build"] }
-
 
 [profile.dev.package."*"]
 opt-level = 0  # Force dependencies to compile with minimal optimization

@@ -3652,7 +3652,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tauri-plugin-mcp"
+name = "tauri-plugin-mcp-gui"
 version = "0.1.0"
 dependencies = [
  "anyhow",

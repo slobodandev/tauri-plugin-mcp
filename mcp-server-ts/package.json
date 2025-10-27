@@ -1,28 +1,45 @@
 {
-  "name": "tauri-mcp-server",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "@delorenj/tauri-mcp-server",
+  "version": "0.1.0",
+  "main": "./build/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "prepublishOnly": "bun run build"
   },
-  "keywords": [],
-  "author": "Pegleg",
+  "keywords": ["tauri", "mcp", "model-context-protocol", "ai", "desktop", "gui", "automation", "screenshot", "dom"],
+  "author": "Jarad DeLorenzo <delorenj@gmail.com>",
   "license": "MIT",
-  "description": "",
+  "description": "MCP server for Tauri applications, enabling AI agents to interact with desktop GUIs through screenshots, DOM access, and input simulation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/delorenj/tauri-plugin-mcp.git",
+    "directory": "mcp-server-ts"
+  },
+  "homepage": "https://delorenj.github.io",
+  "bugs": {
+    "url": "https://github.com/delorenj/tauri-plugin-mcp/issues"
+  },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.1",
-    "zod": "^3.24.4"
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^22.15.17",
-    "typescript": "^5.8.3"
+    "@types/node": "^22.18.12",
+    "typescript": "^5.9.3"
   },
-   "type": "module",
+  "type": "module",
   "bin": {
     "tauri-mcp-server": "./build/index.js"
   },
   "files": [
-    "build"
-  ]
+    "build",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
