@@ -37,6 +37,18 @@ xcap = "0.0.4"
 [target.'cfg(target_os = "windows")'.dependencies]
 win-screenshot = "4.0.5"
 
+# Linux captures the webview in-process through WebKitGTK's snapshot API.
+# These versions must stay in lockstep with the gtk stack tauri/wry pull in
+# (tauri 2.x -> webkit2gtk 2.0, gtk-rs 0.18); a mismatch means the
+# `PlatformWebview::inner()` type no longer lines up and the link breaks.
+# cairo-rs is here for its optional `png` feature, which is what turns the
+# snapshot surface into bytes we can decode.
+[target.'cfg(target_os = "linux")'.dependencies]
+cairo-rs = { version = "0.18", features = ["png"] }
+gio = "0.18"
+glib = "0.18"
+webkit2gtk = "2.0"
+
 [build-dependencies]
 tauri-plugin = { version = "2.2.0", features = ["build"] }
 
