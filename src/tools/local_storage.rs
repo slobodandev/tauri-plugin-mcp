@@ -84,6 +84,11 @@ pub async fn handle_get_local_storage<R: Runtime>(
         "clear" | "keys" => {
             // These operations don't need validation
         }
+        // Not localStorage: a guest-side escape hatch. Host apps may answer
+        // this with a real location.reload() — needed on WebKitGTK where
+        // Vite's full-reload signal never reloads the page and stale React
+        // roots stack up. Rust just forwards it like any other action.
+        "reload" => {}
         _ => {
             return Ok(SocketResponse {
                 success: false,
