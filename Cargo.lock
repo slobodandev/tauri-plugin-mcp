@@ -3657,10 +3657,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
+ "cairo-rs",
  "cocoa",
  "core-graphics 0.22.3",
  "enigo",
  "futures",
+ "gio",
+ "glib",
  "image",
  "interprocess",
  "log",
@@ -3671,6 +3674,7 @@ dependencies = [
  "tauri-plugin",
  "thiserror 2.0.12",
  "tokio",
+ "webkit2gtk",
  "win-screenshot",
  "xcap",
 ]
