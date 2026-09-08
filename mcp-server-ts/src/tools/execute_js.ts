@@ -6,10 +6,10 @@ import { createErrorResponse, createSuccessResponse, formatResultAsText, logComm
 export function registerExecuteJsTool(server: McpServer) {
   server.tool(
     "execute_js",
-    "Executes arbitrary JavaScript code within the context of a specified application window's webview (e.g., a Tauri webview). Returns the result of the last executed statement or a promise resolution. Caution: This tool is destructive and can modify the window's content, state, or trigger unintended actions. Use with careful consideration of the code being executed.",
+    "Executes arbitrary JavaScript in a webview and returns the value as JSON, alongside its JS `typeof`. A thrown exception comes back as an error, not as a null result. Caution: This tool is destructive and can modify the window's content, state, or trigger unintended actions. Use with careful consideration of the code being executed.",
     {
-      code: z.string().describe("Required. The string of JavaScript code to be executed in the target window's webview context. Ensure the code is safe and achieves the intended purpose. Malformed or malicious code can lead to errors or unwanted behavior."),
-      window_label: z.string().default("main").describe("The identifier (e.g., visible title or internal label) of the application window where the JavaScript code will be executed. Defaults to 'main' if not specified."),
+      code: z.string().describe("Required. JavaScript to evaluate. A bare expression ('document.title') returns its value; several statements need an explicit `return`, and may use `await`. A returned promise is awaited up to timeout_ms."),
+      window_label: z.string().default("main").describe("The label of the webview to evaluate in. Child webviews (in-app browser tabs) use their own label, e.g. 'browser::1'. Defaults to 'main'."),
       timeout_ms: z.number().int().positive().optional().describe("The maximum time in milliseconds to allow for the JavaScript execution. If the script exceeds this timeout, its execution will be terminated, and an error may be returned."),
     },
     {

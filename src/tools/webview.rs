@@ -1,86 +1,37 @@
-use serde::{Deserialize, Serialize, Serializer}; // Add Deserialize for parsing payload
+use serde::Deserialize; // Add Deserialize for parsing payload
 use serde_json::Value;
-use std::fmt;
 use std::sync::mpsc;
-use tauri::{AppHandle, Error as TauriError, Listener, Manager, Runtime, WebviewWindow};
+use std::time::Duration;
+use tauri::{AppHandle, Listener, Runtime};
 
-// Custom error enum for the get_dom_text command
-#[derive(Debug)] // Add Serialize for the enum itself if it needs to be directly serialized
-// For now, we serialize its string representation
-pub enum GetDomError {
-    WebviewOperation(String),
-    JavaScriptError(String),
-    DomIsEmpty,
-}
+use crate::tools::eval::{eval_string, resolve_webview, window_label_from_payload};
 
-// Implement Display for GetDomError to allow.to_string()
-impl fmt::Display for GetDomError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GetDomError::WebviewOperation(s) => write!(f, "Webview operation error: {}", s),
-            GetDomError::JavaScriptError(s) => write!(f, "JavaScript execution error: {}", s),
-            GetDomError::DomIsEmpty => write!(f, "Retrieved DOM string is empty"),
-        }
-    }
-}
-
-// Implement Serialize for GetDomError so it can be returned to the frontend
-impl Serialize for GetDomError {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-// Automatically convert tauri::Error into GetDomError::WebviewOperation or JavaScriptError
-impl From<TauriError> for GetDomError {
-    fn from(err: TauriError) -> Self {
-        // Basic differentiation, could be more sophisticated if TauriError variants allow
-        match err {
-            _ => GetDomError::JavaScriptError(err.to_string()), // Default to JS error as eval is involved
-        }
-    }
-}
+/// The DOM read is a single synchronous property access, so it either answers
+/// immediately or the page's main thread is wedged - a long timeout would only
+/// hold the socket open for longer.
+const GET_DOM_TIMEOUT: Duration = Duration::from_secs(5);
 
 // Handler function for the getDom command, following the take_screenshot pattern
 pub async fn handle_get_dom<R: Runtime>(
     app: &AppHandle<R>,
     payload: Value,
 ) -> Result<crate::socket_server::SocketResponse, crate::error::Error> {
-    // Parse the window label from the payload - handle both string and object formats
-    let window_label = if payload.is_string() {
-        // Direct string format
-        payload
-            .as_str()
-            .ok_or_else(|| {
-                crate::error::Error::Anyhow("Invalid string payload for getDom".to_string())
-            })?
-            .to_string()
-    } else if payload.is_object() {
-        // Object with window_label property
-        payload
-            .get("window_label")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                crate::error::Error::Anyhow(
-                    "Missing or invalid window_label in payload object".to_string(),
-                )
-            })?
-    } else {
-        return Err(crate::error::Error::Anyhow(format!(
-            "Invalid payload format for getDom: expected string or object with window_label, got {}",
-            payload
-        )));
-    };
+    // Accepts a bare string (what the MCP server has always sent), an object
+    // with `window_label`, or nothing at all - which still means "main", so
+    // callers that predate the label keep working.
+    let window_label = window_label_from_payload(&payload);
+    let webview = resolve_webview(app, &window_label)?;
 
-    // Get the window by label using the Manager trait
-    let window = app.get_webview_window(&window_label).ok_or_else(|| {
-        crate::error::Error::Anyhow(format!("Window not found: {}", window_label))
-    })?;
-    let result = get_dom_text(app.clone(), window).await;
+    // Read the DOM by evaluating in the target webview rather than by asking the
+    // guest to answer a `got-dom-content` event: the event round trip needed the
+    // app to register a listener, and a child webview (the in-app browser) has no
+    // guest bundle to register one.
+    let result = eval_string(
+        &webview,
+        "document.documentElement ? document.documentElement.outerHTML : ''",
+        GET_DOM_TIMEOUT,
+    );
+
     match result {
         Ok(dom_text) => {
             let data = serde_json::to_value(dom_text).map_err(|e| {
@@ -100,43 +51,6 @@ pub async fn handle_get_dom<R: Runtime>(
     }
 }
 use tauri::Emitter;
-#[tauri::command]
-pub async fn get_dom_text<R: Runtime>(
-    app: AppHandle<R>,
-    _window: WebviewWindow<R>,
-) -> Result<String, GetDomError> {
-    app.emit_to("main", "got-dom-content", "test").unwrap();
-
-    let (tx, rx) = mpsc::channel();
-
-    app.once("got-dom-content-response", move |event| {
-        let payload = event.payload().to_string();
-        let _ = tx.send(payload);
-    });
-
-    // Wait for the content
-    match rx.recv_timeout(std::time::Duration::from_secs(5)) {
-        Ok(dom_string) => {
-            if dom_string.is_empty() {
-                Err(GetDomError::DomIsEmpty)
-            } else {
-                Ok(dom_string)
-            }
-        }
-        Err(e) => {
-            // This error (e: tauri::Error) could be from the eval call itself
-            // or an error from the JavaScript execution (Promise rejection).
-            Err(GetDomError::from(e))
-        }
-    }
-}
-
-// Second fix: add From implementation for RecvTimeoutError
-impl From<mpsc::RecvTimeoutError> for GetDomError {
-    fn from(err: mpsc::RecvTimeoutError) -> Self {
-        GetDomError::WebviewOperation(format!("Timeout waiting for DOM: {}", err))
-    }
-}
 
 // Define the structure for get_element_position payload
 #[derive(Debug, Deserialize)]

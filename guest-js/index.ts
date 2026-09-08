@@ -2,42 +2,31 @@ import { emit } from '@tauri-apps/api/event'; // For emitting the response
 import { getCurrentWebviewWindow, WebviewWindow } from '@tauri-apps/api/webviewWindow'; // For window-specific listener
 
 // Track the unlisten functions for cleanup
-let domContentUnlistenFunction: (() => void) | null = null;
 let localStorageUnlistenFunction: (() => void) | null = null;
-let jsExecutionUnlistenFunction: (() => void) | null = null;
 let elementPositionUnlistenFunction: (() => void) | null = null;
 let sendTextToElementUnlistenFunction: (() => void) | null = null;
 
-export async function setupPluginListeners() { 
+// `execute-js` and `got-dom-content` are gone from this list: the plugin now
+// evaluates both itself through `Webview::eval_with_callback`, which needs no
+// guest cooperation and reaches child webviews that have no guest bundle at all.
+// The old guest-side executor also compiled the caller's code with
+// `new Function`, which any real CSP (`script-src 'self'`) blocks.
+export async function setupPluginListeners() {
     const currentWindow: WebviewWindow = getCurrentWebviewWindow();
-    domContentUnlistenFunction = await currentWindow.listen('got-dom-content', handleDomContentRequest);
     localStorageUnlistenFunction = await currentWindow.listen('get-local-storage', handleLocalStorageRequest);
-    jsExecutionUnlistenFunction = await currentWindow.listen('execute-js', handleJsExecutionRequest);
     elementPositionUnlistenFunction = await currentWindow.listen('get-element-position', handleGetElementPositionRequest);
     sendTextToElementUnlistenFunction = await currentWindow.listen('send-text-to-element', handleSendTextToElementRequest);
-    
-    console.log('TAURI-PLUGIN-MCP: Event listeners for "got-dom-content", "get-local-storage", "execute-js", "get-element-position", and "send-text-to-element" are set up on the current window.');
+
+    console.log('TAURI-PLUGIN-MCP: Event listeners for "get-local-storage", "get-element-position", and "send-text-to-element" are set up on the current window.');
 }
 
 export async function cleanupPluginListeners() {
-    if (domContentUnlistenFunction) {
-        domContentUnlistenFunction();
-        domContentUnlistenFunction = null;
-        console.log('TAURI-PLUGIN-MCP: Event listener for "got-dom-content" has been removed.');
-    }
-    
     if (localStorageUnlistenFunction) {
         localStorageUnlistenFunction();
         localStorageUnlistenFunction = null;
         console.log('TAURI-PLUGIN-MCP: Event listener for "get-local-storage" has been removed.');
     }
 
-    if (jsExecutionUnlistenFunction) {
-        jsExecutionUnlistenFunction();
-        jsExecutionUnlistenFunction = null;
-        console.log('TAURI-PLUGIN-MCP: Event listener for "execute-js" has been removed.');
-    }
-    
     if (elementPositionUnlistenFunction) {
         elementPositionUnlistenFunction();
         elementPositionUnlistenFunction = null;
@@ -310,32 +299,6 @@ function clickElement(element: Element, centerX: number, centerY: number) {
     }
 }
 
-async function handleDomContentRequest(event: any) {
-    console.log('TAURI-PLUGIN-MCP: Received got-dom-content, payload:', event.payload);
-    
-    try {
-        const domContent = getDomContent();
-        await emit('got-dom-content-response', domContent);
-        console.log('TAURI-PLUGIN-MCP: Emitted got-dom-content-response');
-    } catch (error) {
-        console.error('TAURI-PLUGIN-MCP: Error handling dom content request', error);
-        await emit('got-dom-content-response', '').catch(e => 
-            console.error('TAURI-PLUGIN-MCP: Error emitting empty response', e)
-        );
-    }
-}
-
-function getDomContent(): string {
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        const domContent = document.documentElement.outerHTML;
-        console.log('TAURI-PLUGIN-MCP: DOM content fetched, length:', domContent.length);
-        return domContent;
-    } 
-    
-    console.warn('TAURI-PLUGIN-MCP: DOM not fully loaded when got-dom-content received. Returning empty content.');
-    return '';
-}
-
 async function handleLocalStorageRequest(event: any) {
     console.log('TAURI-PLUGIN-MCP: Received get-local-storage, payload:', event.payload);
     
@@ -458,53 +421,6 @@ function performLocalStorageOperation(action: string, key?: string | any, value?
         default:
             console.log(`TAURI-PLUGIN-MCP: Unsupported localStorage action: ${action}`);
             throw new Error(`Unsupported localStorage action: ${action}`);
-    }
-}
-
-// Handle JS execution requests
-async function handleJsExecutionRequest(event: any) {
-    console.log('TAURI-PLUGIN-MCP: Received execute-js, payload:', event.payload);
-    
-    try {
-        // Extract the code to execute
-        const code = event.payload;
-        
-        // Execute the code
-        const result = executeJavaScript(code);
-        
-        // Prepare response with result and type information
-        const response = {
-            result: typeof result === 'object' ? JSON.stringify(result) : String(result),
-            type: typeof result
-        };
-        
-        // Send back the result
-        await emit('execute-js-response', response);
-        console.log('TAURI-PLUGIN-MCP: Emitted execute-js-response');
-    } catch (error) {
-        console.error('TAURI-PLUGIN-MCP: Error executing JavaScript:', error);
-        const errorMessage = error instanceof Error ? error.toString() : String(error);
-        
-        await emit('execute-js-response', {
-            result: null,
-            type: 'error',
-            error: errorMessage
-        }).catch(e => 
-            console.error('TAURI-PLUGIN-MCP: Error emitting error response', e)
-        );
-    }
-}
-
-// Function to safely execute JavaScript code
-function executeJavaScript(code: string): any {
-    // Using Function constructor is slightly safer than eval
-    // It runs in global scope rather than local scope
-    try {
-        // For expressions, return the result
-        return new Function(`return (${code})`)();
-    } catch {
-        // If that fails, try executing as statements
-        return new Function(code)();
     }
 }
 

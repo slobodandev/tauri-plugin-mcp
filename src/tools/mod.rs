@@ -6,9 +6,11 @@ use crate::shared::commands;
 use crate::socket_server::SocketResponse;
 
 // Export command modules
+pub mod eval;
 pub mod execute_js;
 pub mod local_storage;
 pub mod mouse_movement;
+pub mod navigation;
 pub mod ping;
 pub mod take_screenshot;
 pub mod text_input;
@@ -19,6 +21,7 @@ pub mod window_manager;
 pub use execute_js::handle_execute_js;
 pub use local_storage::handle_get_local_storage;
 pub use mouse_movement::handle_simulate_mouse_movement;
+pub use navigation::{handle_get_url, handle_go_back, handle_go_forward, handle_load_uri};
 pub use ping::handle_ping;
 pub use take_screenshot::handle_take_screenshot;
 pub use text_input::handle_simulate_text_input;
@@ -50,6 +53,10 @@ pub async fn handle_command<R: Runtime>(
         commands::SIMULATE_MOUSE_MOVEMENT => handle_simulate_mouse_movement(app, payload).await,
         commands::GET_ELEMENT_POSITION => handle_get_element_position(app, payload).await,
         commands::SEND_TEXT_TO_ELEMENT => handle_send_text_to_element(app, payload).await,
+        commands::LOAD_URI => handle_load_uri(app, payload).await,
+        commands::GO_BACK => handle_go_back(app, payload).await,
+        commands::GO_FORWARD => handle_go_forward(app, payload).await,
+        commands::GET_URL => handle_get_url(app, payload).await,
         _ => Ok(SocketResponse {
             success: false,
             data: None,

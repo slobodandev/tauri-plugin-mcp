@@ -7,7 +7,7 @@ export function registerGetDomTool(server: McpServer) {
     "get_dom",
     "Retrieves the full HTML Document Object Model (DOM) content from the specified application window as a string. This tool is read-only and provides a snapshot of the window's current HTML structure. Useful for parsing, analysis, or data extraction.",
     {
-      window_label: z.string().default("main").describe("The identifier (e.g., visible title or internal label) of the application window from which to retrieve the DOM content. Defaults to 'main' if not specified."),
+      window_label: z.string().default("main").describe("The label of the webview to read. Child webviews (in-app browser tabs) use their own label, e.g. 'browser::1'. Defaults to 'main'."),
     },
     {
       title: "Retrieve HTML DOM Content from Application Window",

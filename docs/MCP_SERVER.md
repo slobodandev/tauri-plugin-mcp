@@ -12,7 +12,10 @@ The server bridges MCP clients (like LLMs) with a Tauri application by:
 
 ## Available Tools
 
-The server provides the following MCP tools:
+The server provides the following MCP tools. Every `window_label` is resolved
+against the app's whole webview registry, so a *child* webview created with
+`Window::add_child` (an in-app browser tab, label `browser::<id>`) is addressable
+by label exactly like a top-level window.
 
 ### `take_screenshot`
 
@@ -29,25 +32,67 @@ Take a screenshot of a Tauri application window.
 
 ### `execute_js`
 
-Execute JavaScript code in a Tauri window.
+Evaluate JavaScript in a webview and get the value back.
 
 **Parameters:**
-- `code`: JavaScript code to execute
-- `window_label` (optional): The window to execute in (default: "main")
-- `timeout_ms` (optional): Maximum execution time in milliseconds
+- `code`: JavaScript to evaluate. A bare expression (`document.title`) returns its
+  value; several statements need an explicit `return` and may use `await`. A
+  returned promise is awaited up to the timeout.
+- `window_label` (optional): The webview to evaluate in (default: "main")
+- `timeout_ms` (optional): Maximum execution time in milliseconds (default 5000,
+  capped at 60000)
 
 **Returns:**
-- The result of the JavaScript execution, serialized as a string
+- `result`: the evaluated value as JSON (`undefined` comes back as `null`)
+- `type`: the JS `typeof` of the value, with `null` reported as `"null"`
+
+A thrown exception is returned as an error, not as a null result.
 
 ### `get_dom`
 
-Get the HTML DOM content of a Tauri window.
+Get the HTML DOM content of a webview.
 
 **Parameters:**
-- `window_label` (optional): The window to get the DOM from (default: "main")
+- `window_label` (optional): The webview to read (default: "main")
 
 **Returns:**
 - HTML content as a string
+
+### `load_uri`
+
+Navigate a webview to a URL.
+
+**Parameters:**
+- `url`: an `http:` or `https:` URL. Every other scheme (`file:`, `data:`,
+  `javascript:`) is rejected — the socket is an unauthenticated automation
+  surface, and an unchecked navigate would be a local-file read primitive.
+- `window_label` (optional): The webview to navigate (default: "main")
+
+**Returns:**
+- `window_label` and the normalized `url`
+
+### `go_back` / `go_forward`
+
+Move a webview through its session history.
+
+**Parameters:**
+- `window_label` (optional): The webview to navigate (default: "main")
+
+**Returns:**
+- `history_length`: `history.length` as seen just before the move. The webview
+  exposes no history API, so these are driven through the page's own `history`
+  object and cannot report whether an entry existed — a length of 1 means the
+  call was a no-op.
+
+### `get_url`
+
+Read the URL a webview is currently showing.
+
+**Parameters:**
+- `window_label` (optional): The webview to read (default: "main")
+
+**Returns:**
+- `window_label` and the current `url`
 
 ### `manage_window`
 

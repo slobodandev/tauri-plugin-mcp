@@ -13,12 +13,16 @@ The Tauri MCP Plugin provides a comprehensive set of tools that allow AI models 
 #### Window Interaction
 - **Take Screenshot**: Capture images of any Tauri window with configurable quality and size
 - **Window Management**: Control window position, size, focus, minimize/maximize state
-- **DOM Access**: Retrieve the HTML DOM content from webviews windows
+- **DOM Access**: Retrieve the HTML DOM content from any webview
+- **Navigation**: Drive a webview's URL and session history (`load_uri`, `go_back`, `go_forward`, `get_url`)
+
+Tools that take a `window_label` address child webviews (`Window::add_child`, as
+used for in-app browser tabs) as well as top-level windows.
 
 #### User Input Simulation
 - **Mouse Movement**: Simulate mouse clicks, movements, and scrolling
 - **Text Input**: Programmatically input text into focused elements
-- **Execute JavaScript**: Run arbitrary JavaScript code in the application context
+- **Execute JavaScript**: Evaluate arbitrary JavaScript in a webview and get the value back as JSON
 
 #### Data & Storage
 - **Local Storage Management**: Get, set, remove, and clear localStorage entries
